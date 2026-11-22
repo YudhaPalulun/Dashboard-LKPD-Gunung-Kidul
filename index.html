@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Belanja dan Beban Daerah — Kabupaten Gunungkidul</title>
+<meta name="description" content="Dashboard interaktif Belanja (LRA) dan Beban (LO) Pemerintah Kabupaten Gunungkidul, TA 2023–2025, berdasarkan LKPD. Dapat diunduh dalam bentuk laporan Excel per tahun.">
+<meta name="theme-color" content="#2f3d5c">
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
+    <div class="brand">
+      <img class="logo" src="assets/logo-256.png" alt="Lambang Kabupaten Gunungkidul" width="34" height="43">
+      <div><b>Keuangan Daerah</b><small>Kabupaten Gunungkidul</small></div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="nav-title">Dashboard</div>
+      <a href="#ringkasan" data-view="ringkasan"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Ringkasan</a>
+      <a href="#belanja" data-view="belanja"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 16v-5M12 16V8M16 16v-3"/></svg>Belanja (LRA)</a>
+      <a href="#beban" data-view="beban"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Beban (LO)</a>
+      <div class="nav-title">Laporan</div>
+      <a href="#unduh" data-view="unduh"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg>Unduh Laporan</a>
+      <a href="#tentang" data-view="tentang"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Tentang Data</a>
+    </nav>
+    <div class="side-note"><b>Sumber data</b>LKPD Pemerintah Kabupaten Gunungkidul: LRA dan LO tahun 2023, 2024, 2025.</div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="icon-btn" id="menuBtn" aria-label="Buka menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      <div class="crumb" id="crumb">Ringkasan<small>Belanja dan Beban Daerah</small></div>
+      <div class="spacer"></div>
+      <div class="years" id="years" role="tablist" aria-label="Tahun anggaran"></div>
+      <a class="btn-dl" id="dlTop" href="#" download>
+        <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/></svg><span class="lbl" id="dlTopLbl">Unduh Excel</span>
+      </a>
+      <button class="icon-btn" id="themeBtn" aria-label="Ganti tema terang/gelap"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </header>
+    <main id="view" tabindex="-1" aria-live="polite"></main>
+    <footer class="foot">Sumber: LKPD Pemerintah Kabupaten Gunungkidul (LRA dan LO), diolah. Angka dalam Rupiah kecuali dinyatakan lain.</footer>
+  </div>
+</div>
+<noscript><p style="padding:24px">Dashboard ini membutuhkan JavaScript. Laporan Excel tetap dapat diunduh di folder <code>downloads/</code>.</p></noscript>
+<script src="js/chart.umd.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
