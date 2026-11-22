@@ -5,12 +5,13 @@
   const D = window.LKPD, YRS = D.tahun, PREV = D.tahunPembanding, B = D.belanja, L = D.beban;
   const ALLY = [PREV].concat(YRS);
   const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const VIEWS = ['ringkasan', 'belanja', 'beban', 'semua', 'unduh', 'tentang'];
+  const VIEWS = ['ringkasan', 'belanja', 'beban', 'semua', 'lembar', 'unduh', 'tentang'];
   const TITLES = {
     ringkasan: ['Ringkasan', 'Belanja dan Beban Daerah'],
     belanja: ['Belanja (LRA)', 'Laporan Realisasi Anggaran'],
     beban: ['Beban (LO)', 'Laporan Operasional'],
     semua: ['Semua Tahun', 'Data lengkap 2023–2025'],
+    lembar: ['Lembar Kerja', 'Nilai dan rumus tiap sel'],
     unduh: ['Unduh Laporan', 'Laporan Excel per tahun'],
     tentang: ['Tentang Data', 'Sumber, metode, dan catatan']
   };
@@ -28,7 +29,8 @@
     view: 'ringkasan',
     year: +store.get('gk.year', YRS[YRS.length - 1]),
     unit: store.get('gk.unit', 'miliar'),
-    theme: store.get('gk.theme', 'light')
+    theme: store.get('gk.theme', 'light'),
+    sheet: 'Rincian LRA'
   };
   if (YRS.indexOf(state.year) < 0) state.year = YRS[YRS.length - 1];
   if (state.unit !== 'miliar' && state.unit !== 'penuh') state.unit = 'miliar';
@@ -516,15 +518,110 @@
       narasiAll();
   }
 
+
+  /* ---------- lembar kerja: nilai dan rumus tiap sel (data dari file Excel) ---------- */
+  const XL_SHEETS = ['Rincian LRA', 'Rincian LO', 'Data Grafik', 'Rumus & Perhitungan'];
+  const colL = (n) => { let t = ''; while (n > 0) { const m = (n - 1) % 26; t = String.fromCharCode(65 + m) + t; n = Math.floor((n - 1) / 26); } return t; };
+  const colN = (t) => t.split('').reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0);
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const xlFmt = (v, k) => {
+    if (v === null || v === undefined || v === '') return '';
+    if (typeof v === 'string') return v;
+    switch (k) {
+      case 'r': return v === 0 ? '-' : v < 0 ? '(' + F2.format(-v) + ')' : F2.format(v);
+      case 'p': return v === 0 ? '-' : v < 0 ? '(' + F2.format(-v * 100) + '%)' : F2.format(v * 100) + '%';
+      case 'm': return F2.format(v);
+      case 'q': return F2.format(v * 100) + '%';
+      case 's': return (v >= 0 ? '+' : '−') + F2.format(Math.abs(v * 100)) + '%';
+      case 'o': return F1.format(v * 100) + '%';
+      default: return Number.isInteger(v) ? String(v) : F2.format(v);
+    }
+  };
+  function xlRefs(f) {
+    const t = f.replace(/'[^']+'!\$?[A-Z]+\$?\d+(?::\$?[A-Z]+\$?\d+)?/g, '');
+    const re = /\$?([A-Z]{1,2})\$?(\d+)(?::\$?([A-Z]{1,2})\$?(\d+))?/g, out = []; let m;
+    while ((m = re.exec(t))) out.push(m[3] ? [colN(m[1]), +m[2], colN(m[3]), +m[4]] : [colN(m[1]), +m[2], colN(m[1]), +m[2]]);
+    return out;
+  }
+  function xlExplain(f) {
+    const other = /'([^']+)'!/.exec(f);
+    if (/ABS\(/.test(f)) return 'Pemeriksaan otomatis: hasilnya OK jika selisihnya kurang dari 1.';
+    if (other) return 'Mengambil angka dari sheet ' + other[1] + (/\/10\^9/.test(f) ? ' lalu mengubahnya ke Rp miliar (÷ 1.000.000.000).' : '.');
+    if (/^=SUM\(/.test(f)) return 'Penjumlahan sel yang disorot kuning.';
+    if (/^=IF\([^=]+=0,0,.+-1\)$/.test(f)) return 'Perubahan = tahun ini ÷ tahun lalu − 1 (hasil 0 jika pembagi nol).';
+    if (/^=IF\([^=]+=0,0,.+\/.+\)$/.test(f)) return 'Pembagian sel yang disorot kuning (hasil 0 jika pembagi nol).';
+    if (/^=[A-Z]+\d+-[A-Z]+\d+$/.test(f)) return 'Selisih: sel pertama dikurangi sel kedua.';
+    if (/^=[A-Z]+\d+$/.test(f)) return 'Sama dengan sel yang disorot kuning.';
+    return '';
+  }
+  function xlSheet() { return window.SHEETS[state.year][state.sheet]; }
+  function xlLabels(sh, r, c) {
+    const row = sh.rows[r - 1] || []; let rl = '', cl = '';
+    for (let i = 0; i < 2; i++) { const x = row[i]; if (x && typeof x[0] === 'string' && !/^\d/.test(x[0]) && !(x[3] || '').split(' ').includes('code')) { rl = x[0]; break; } }
+    for (let i = r - 1; i >= 1; i--) { const x = (sh.rows[i - 1] || [])[c - 1]; if (x && typeof x[0] === 'string' && (x[3] || '').split(' ').includes('h')) { cl = x[0]; break; } }
+    return [rl, cl];
+  }
+  function xlSelect(addr) {
+    const m = /^([A-Z]+)(\d+)$/.exec(addr); if (!m) return;
+    const c = colN(m[1]), r = +m[2], sh = xlSheet(), x = (sh.rows[r - 1] || [])[c - 1];
+    document.querySelectorAll('.xl td.sel,.xl td.pre').forEach((e) => e.classList.remove('sel', 'pre'));
+    const td = document.querySelector('.xl td[data-a="' + addr + '"]'); if (td) td.classList.add('sel');
+    const st = x ? (x[3] || '').split(' ') : [];
+    let fv = '', note = '';
+    if (x && x[1]) {
+      fv = '<code>' + esc(x[1]) + '</code><span class="arr">→</span><b>' + esc(xlFmt(x[0], x[2])) + '</b>';
+      note = xlExplain(x[1]);
+      xlRefs(x[1]).forEach((q) => { for (let rr = q[1]; rr <= q[3]; rr++) for (let cc = q[0]; cc <= q[2]; cc++) { const t = document.querySelector('.xl td[data-a="' + colL(cc) + rr + '"]'); if (t && t !== td) t.classList.add('pre'); } });
+    } else if (x && typeof x[0] === 'number') {
+      fv = '<b>' + esc(xlFmt(x[0], x[2])) + '</b>'; note = st.includes('in') ? 'Angka input: disalin dari dokumen LKPD (teks biru). Bukan hasil rumus.' : '';
+    } else if (x) { fv = esc(x[0]); note = st.includes('code') ? 'Teks yang menampilkan rumus untuk dibaca (bukan sel rumus).' : ''; }
+    const lb = xlLabels(sh, r, c), lab = [lb[0], lb[1]].filter(Boolean).join(' · ');
+    document.getElementById('xlName').textContent = addr;
+    document.getElementById('xlFv').innerHTML = fv || '<span class="mut">(sel kosong)</span>';
+    document.getElementById('xlDesc').innerHTML = (lab ? '<b>' + esc(lab) + '</b>' : '') + (lab && note ? ' — ' : '') + esc(note);
+  }
+  function xlInit() {
+    const sh = xlSheet(); let first = null;
+    for (let r = 0; r < sh.rows.length && !first; r++) for (let c = 0; c < sh.rows[r].length; c++) { const x = sh.rows[r][c]; if (x && x[1]) { first = colL(c + 1) + (r + 1); break; } }
+    xlSelect(first || 'A1');
+  }
+  function xlTable(sh) {
+    const skip = {}, span = {};
+    sh.merges.forEach((q) => { span[q[0] + ',' + q[1]] = [q[2] - q[0] + 1, q[3] - q[1] + 1]; for (let r = q[0]; r <= q[2]; r++) for (let c = q[1]; c <= q[3]; c++) if (r !== q[0] || c !== q[1]) skip[r + ',' + c] = 1; });
+    const px = sh.w.map((w) => Math.round(w * 7.2 + 10)), total = 44 + px.reduce((a, b) => a + b, 0);
+    let h = '<table class="xl" style="width:' + total + 'px"><colgroup><col style="width:44px">' + px.map((w) => '<col style="width:' + w + 'px">').join('') + '</colgroup><thead><tr><th class="corner"></th>' + sh.w.map((_, i) => '<th>' + colL(i + 1) + '</th>').join('') + '</tr></thead><tbody>';
+    sh.rows.forEach((row, ri) => {
+      const r = ri + 1; h += '<tr><th class="rn">' + r + '</th>';
+      for (let c = 1; c <= sh.w.length; c++) {
+        if (skip[r + ',' + c]) continue;
+        const x = row[c - 1], sp = span[r + ',' + c], cls = [];
+        if (x) { (x[3] || '').split(' ').forEach((t) => t && cls.push(t)); if (x[1]) cls.push('fc'); if (typeof x[0] === 'number') cls.push('num'); }
+        h += '<td data-a="' + colL(c) + r + '"' + (sp ? ' rowspan="' + sp[0] + '" colspan="' + sp[1] + '"' : '') + (cls.length ? ' class="' + cls.join(' ') + '"' : '') + '>' + (x ? esc(xlFmt(x[0], x[2])) : '') + '</td>';
+      }
+      h += '</tr>';
+    });
+    return h + '</tbody></table>';
+  }
+  function vLembar() {
+    const y = state.year, sh = xlSheet();
+    const tabs = '<div class="seg tabs" role="group" aria-label="Pilih sheet">' + XL_SHEETS.map((n) => '<button data-sheet="' + n + '" aria-pressed="' + (n === state.sheet) + '">' + n + '</button>').join('') + '</div>';
+    return '<section class="hero reveal"><div class="eyebrow">Lembar kerja · TA ' + y + '</div><h1>Lembar Kerja: Nilai dan Rumus</h1><p class="insight">Ketuk sel mana pun untuk melihat nilai dan rumusnya, seperti di Excel. Sel yang dipakai rumus ikut disorot kuning. Isinya sama persis dengan file Excel TA ' + y + ': semua persentase dan hasil hitung berupa rumus.</p></section>' +
+      '<section class="card reveal" style="--i:1"><div class="card-head"><div><h2>Lembar kerja ' + state.sheet + '</h2><p class="sub">Ketuk sel untuk melihat nilai dan rumusnya · teks biru = angka input dari LKPD · teks hitam = hasil rumus</p></div>' +
+      '<a class="btn-dl" href="' + fileOf(y) + '" download>' + ICON.dl + '<span class="lbl">Unduh Excel ' + y + '</span></a></div>' + tabs +
+      '<div class="xl-bar"><div class="fbar"><span class="nb" id="xlName">–</span><span class="fxl">fx</span><span class="fv" id="xlFv"></span></div><div class="fdesc" id="xlDesc"></div></div>' +
+      '<div class="xl-wrap" id="xlWrap">' + xlTable(sh) + '</div>' +
+      '<div class="key xl-key"><span><i class="k-in"></i>Angka input dari LKPD</span><span><i class="k-fx"></i>Hasil rumus</span><span><i class="k-sel"></i>Sel dipilih</span><span><i class="k-pre"></i>Sel yang dipakai rumus</span></div></section>';
+  }
+
   function vUnduh() {
     const cards = YRS.map((y, i) => {
       const R = sumB('realisasi', y), A = sumB('anggaran', y), bb = sumL(y);
       return '<section class="card dl-card reveal" style="--i:' + (i + 1) + '"><div class="yr">' + y + '</div>' +
         '<div class="chips"><span class="chip">Belanja <b>' + rpShort(R) + '</b></span><span class="chip">Capaian <b>' + pct(R / A) + '</b></span><span class="chip">Beban <b>' + rpShort(bb) + '</b></span></div>' +
-        '<ul><li>Dashboard: 6 angka utama dan 4 grafik</li><li>Rincian LRA: anggaran, realisasi, capaian, perubahan</li><li>Rincian LO: beban tahun ini dan tahun lalu</li><li>Data Grafik dan Catatan &amp; Sumber</li></ul>' +
+        '<ul><li>Dashboard: 6 angka utama dan 4 grafik</li><li>Rincian LRA: anggaran, realisasi, capaian, sisa anggaran, porsi, perubahan</li><li>Rincian LO: beban tahun ini, tahun lalu, dan porsi</li><li>Rumus &amp; Perhitungan: daftar rumus dan pemeriksaan otomatis</li><li>Data Grafik dan Catatan &amp; Sumber</li></ul>' +
         '<a class="btn-dl" href="' + fileOf(y) + '" download>' + ICON.dl + '<span>Unduh Excel TA ' + y + '</span></a></section>';
     }).join('');
-    return '<section class="hero reveal"><div class="eyebrow">Laporan Excel</div><h1>Unduh Laporan per Tahun</h1><p class="insight">Setiap tahun punya satu file Excel (.xlsx). Subtotal, capaian, dan perubahan berupa rumus yang bisa dicek, dan grafiknya sudah ada di dalam file. Angka biru adalah salinan dari dokumen sumber; angka hitam adalah hasil rumus.</p></section><div class="grid g-3">' + cards + '</div>';
+    return '<section class="hero reveal"><div class="eyebrow">Laporan Excel</div><h1>Unduh Laporan per Tahun</h1><p class="insight">Setiap tahun punya satu file Excel (.xlsx). Semua subtotal, capaian, sisa anggaran, porsi, dan perubahan berupa rumus Excel yang bisa dicek, dan grafiknya sudah ada di dalam file. Angka biru adalah salinan dari dokumen sumber; angka hitam adalah hasil rumus. Ingin melihat rumusnya tanpa membuka Excel? Buka <a href="#lembar"><b>Lembar Kerja</b></a>.</p></section><div class="grid g-3">' + cards + '</div>';
   }
 
   function vTentang() {
@@ -568,11 +665,11 @@
     const t = TITLES[state.view];
     document.getElementById('crumb').innerHTML = t[0] + '<small>' + t[1] + '</small>';
     document.title = t[0] + ' — Belanja dan Beban Daerah Kabupaten Gunungkidul';
-    const showYear = state.view === 'ringkasan' || state.view === 'belanja' || state.view === 'beban' || state.view === 'semua';
+    const showYear = state.view === 'ringkasan' || state.view === 'belanja' || state.view === 'beban' || state.view === 'semua' || state.view === 'lembar';
     const isAll = state.view === 'semua';
     const ye = document.getElementById('years');
     ye.classList.toggle('hidden', !showYear);
-    ye.innerHTML = YRS.map((y) => '<button role="tab" data-y="' + y + '" aria-selected="' + (!isAll && y === state.year) + '">' + y + '</button>').join('') + '<button role="tab" data-y="all" aria-selected="' + isAll + '">Semua</button>';
+    ye.innerHTML = YRS.map((y) => '<button role="tab" data-y="' + y + '" aria-selected="' + (!isAll && y === state.year) + '">' + y + '</button>').join('') + (state.view === 'lembar' ? '' : '<button role="tab" data-y="all" aria-selected="' + isAll + '">Semua</button>');
     const dl = document.getElementById('dlTop');
     dl.href = fileOf(state.year); dl.classList.toggle('hidden', !showYear || isAll);
     document.getElementById('dlTopLbl').textContent = 'Unduh Excel ' + state.year;
@@ -580,12 +677,13 @@
   function render(scroll) {
     destroy();
     themeChart();
-    const fn = { ringkasan: vRingkasan, belanja: vBelanja, beban: vBeban, semua: vSemua, unduh: vUnduh, tentang: vTentang }[state.view];
+    const fn = { ringkasan: vRingkasan, belanja: vBelanja, beban: vBeban, semua: vSemua, lembar: vLembar, unduh: vUnduh, tentang: vTentang }[state.view];
     const view = document.getElementById('view');
     view.innerHTML = fn();
     view.classList.remove('swap'); void view.offsetWidth; view.classList.add('swap');
     chrome();
     observe(view);
+    if (state.view === 'lembar') xlInit();
     if (scroll) window.scrollTo({ top: 0, behavior: 'auto' });
   }
   function setYear(y) {
@@ -604,6 +702,8 @@
 
   document.getElementById('years').addEventListener('click', (e) => { const b = e.target.closest('button[data-y]'); if (!b) return; if (b.dataset.y === 'all') location.hash = 'semua'; else setYear(+b.dataset.y); });
   document.getElementById('view').addEventListener('click', (e) => {
+    const cell = e.target.closest('.xl td[data-a]'); if (cell) { xlSelect(cell.dataset.a); return; }
+    const tab = e.target.closest('button[data-sheet]'); if (tab) { state.sheet = tab.dataset.sheet; render(false); return; }
     const b = e.target.closest('button[data-unit]');
     if (b) { state.unit = b.dataset.unit; store.set('gk.unit', state.unit); refreshTables(); }
   });
