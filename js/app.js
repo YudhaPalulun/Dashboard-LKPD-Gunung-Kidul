@@ -5,11 +5,12 @@
   const D = window.LKPD, YRS = D.tahun, PREV = D.tahunPembanding, B = D.belanja, L = D.beban;
   const ALLY = [PREV].concat(YRS);
   const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  const VIEWS = ['ringkasan', 'belanja', 'beban', 'unduh', 'tentang'];
+  const VIEWS = ['ringkasan', 'belanja', 'beban', 'semua', 'unduh', 'tentang'];
   const TITLES = {
     ringkasan: ['Ringkasan', 'Belanja dan Beban Daerah'],
     belanja: ['Belanja (LRA)', 'Laporan Realisasi Anggaran'],
     beban: ['Beban (LO)', 'Laporan Operasional'],
+    semua: ['Semua Tahun', 'Data lengkap 2023–2025'],
     unduh: ['Unduh Laporan', 'Laporan Excel per tahun'],
     tentang: ['Tentang Data', 'Sumber, metode, dan catatan']
   };
@@ -114,7 +115,7 @@
   function chTrend(cv) {
     const y = state.year;
     const ang = YRS.map((t) => sumB('anggaran', t) / 1e9), rea = YRS.map((t) => sumB('realisasi', t) / 1e9);
-    const hi = (c, a) => YRS.map((t) => (t === y ? c : alpha(c, a)));
+    const hi = (c, a) => YRS.map((t) => (t === y || state.view === 'semua' ? c : alpha(c, a)));
     return new Chart(cv, {
       type: 'bar',
       data: {
@@ -183,7 +184,7 @@
     });
   }
   function chVs(cv) {
-    const y = state.year, hi = (c) => YRS.map((t) => (t === y ? c : alpha(c, 0.5)));
+    const y = state.year, hi = (c) => YRS.map((t) => (t === y || state.view === 'semua' ? c : alpha(c, 0.5)));
     const bel = YRS.map((t) => sumB('realisasi', t) / 1e9), beb = YRS.map((t) => sumL(t) / 1e9);
     return new Chart(cv, {
       type: 'bar',
@@ -329,9 +330,9 @@
     out.push(row('tot', 'JUMLAH BEBAN', sumL(y), sumL(y - 1), ALLY.map((t) => sumL(t)), css('--accent')));
     return '<table class="tbl"><thead><tr><th>Uraian</th><th>Tahun ' + y + '</th><th>Tahun ' + (y - 1) + '</th><th>Selisih</th><th>Perubahan</th><th>Tren ' + PREV + '–' + YRS[YRS.length - 1] + '</th></tr></thead><tbody>' + out.join('') + '</tbody></table>';
   }
-  function tableCard(id, fn, titleTxt, subTxt, idx) {
+  function tableCard(id, fn, titleTxt, subTxt, idx, noDl) {
     tableFns[id] = fn;
-    return '<section class="card reveal" style="--i:' + idx + '"><div class="card-head"><div><h2>' + titleTxt + '</h2><p class="sub">' + subTxt + ' <span class="unit-lbl">' + unitLabel() + '</span></p></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + unitSeg() + '<a class="btn-dl" href="' + fileOf(state.year) + '" download>' + ICON.dl + '<span class="lbl">Excel ' + state.year + '</span></a></div></div><div class="tbl-wrap" id="' + id + '">' + fn() + '</div></section>';
+    return '<section class="card reveal" style="--i:' + idx + '"><div class="card-head"><div><h2>' + titleTxt + '</h2><p class="sub">' + subTxt + ' <span class="unit-lbl">' + unitLabel() + '</span></p></div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + unitSeg() + '' + (noDl ? '' : '<a class="btn-dl" href="' + fileOf(state.year) + '" download>' + ICON.dl + '<span class="lbl">Excel ' + state.year + '</span></a>') + '</div></div><div class="tbl-wrap" id="' + id + '">' + fn() + '</div></section>';
   }
   function refreshTables() {
     Object.keys(tableFns).forEach((id) => { const el = document.getElementById(id); if (el) el.innerHTML = tableFns[id](); });
@@ -370,7 +371,7 @@
       '<section class="card reveal" style="--i:1"><div class="card-head"><div><h2>Belanja (LRA) vs Beban (LO)</h2><p class="sub">Realisasi belanja dan total beban per tahun, Rp miliar</p></div></div>' + box('chVs', 'short', 'Grafik batang realisasi belanja dan total beban per tahun') +
       '<p class="note-line">Tahun <b>' + y + '</b>: beban (LO) ' + (diff >= 0 ? 'lebih tinggi ' : 'lebih rendah ') + '<b>' + rpShort(Math.abs(diff)) + '</b> dari realisasi belanja (LRA). LRA mencatat belanja daerah, sedangkan LO memakai dasar akrual dan memuat beban penyusutan.</p></section>' +
       '<section class="card reveal" style="--i:2"><div class="card-head"><div><h2>Enam Belanja Terbesar ' + y + '</h2><p class="sub">Jenis belanja dengan realisasi tertinggi, Rp miliar</p></div></div>' + box('chTop', 'short', 'Grafik batang enam jenis belanja terbesar') +
-      '<p class="note-line"><b>' + topList.uraian + '</b> adalah yang terbesar: ' + rpShort(topList.realisasi[y]) + ' (' + pct(topList.realisasi[y] / rB, 1) + ' dari total belanja).</p></section></div>';
+      '<p class="note-line"><b>' + topList.uraian + '</b> adalah yang terbesar: ' + rpShort(topList.realisasi[y]) + ' (' + pct(topList.realisasi[y] / rB, 1) + ' dari total belanja).</p></section></div>' + narasi(y);
   }
 
   function vBelanja() {
@@ -407,6 +408,112 @@
       '<section class="card reveal" style="--i:1"><div class="card-head"><div><h2>Beban per Kelompok</h2><p class="sub">Per tahun, ditumpuk menurut kelompok, Rp miliar</p></div></div>' + box('chStackL', '', 'Grafik batang bertumpuk beban per kelompok') + '</section>' +
       '<section class="card reveal" style="--i:2"><div class="card-head"><div><h2>Komposisi Beban ' + y + '</h2><p class="sub">Porsi per kelompok</p></div></div><div class="donut">' + box('chKomL', 'short', 'Diagram donat komposisi beban') + '<div class="mid"><b>' + (T / 1e12).toFixed(2).replace('.', ',') + ' T</b><small>total beban</small></div></div>' + legendList(GL.map((g) => g.replace('Beban ', '')), kel, kc) + '</section></div>' +
       tableCard('tblL', tblBeban, 'Rincian Beban ' + y, 'Per jenis beban menurut LO.', 1) + callout;
+  }
+
+
+  /* ---------- narasi (dihitung dari data, bukan ditulis tangan) ---------- */
+  const dirPct = (c, p) => (c >= p ? 'naik ' : 'turun ') + F2.format(Math.abs((c / p - 1) * 100)) + '%';
+  const pegawai = (t) => B.filter((r) => r.uraian === 'Belanja Pegawai')[0].realisasi[t];
+  const bantuan = (t) => ({ l: L.filter((r) => r.uraian === 'Beban Bantuan Keuangan')[0].nilai[t], b: B.filter((r) => r.uraian === 'Belanja Bantuan Keuangan')[0].realisasi[t] });
+  const byYear = (fn, fmt) => YRS.map((t) => (fmt || rpShort)(fn(t)) + ' (' + t + ')').join(', ');
+  const trendWord = (a) => (a.every((v, i) => i === 0 || v < a[i - 1]) ? 'turun setiap tahun' : a.every((v, i) => i === 0 || v > a[i - 1]) ? 'naik setiap tahun' : 'berubah-ubah');
+  const narCard = (i, title, body) => '<section class="card prose reveal" style="--i:' + i + '"><h3>' + title + '</h3>' + body + '</section>';
+  const LAST = YRS[YRS.length - 1];
+  const auditNote = (y) => (y === LAST
+    ? 'Di LKPD sumber, kolom ' + y + ' tidak berlabel “Audited”, sedangkan LO ' + YRS.slice(0, -1).join(' dan ') + ' berlabel “Audited”. Karena itu angka ' + y + ' sebaiknya dicek ulang sebelum dikutip.'
+    : 'Di LKPD sumber, LO tahun ' + y + ' berlabel “Audited”.');
+  const bkNote = (y) => { const k = bantuan(y); return k.l / k.b < 0.7 ? 'Beban Bantuan Keuangan ' + y + ' (' + rpShort(k.l) + ') jauh di bawah Belanja Bantuan Keuangan pada LRA (' + rpShort(k.b) + '). Angka mengikuti dokumen sumber; penjelasannya perlu dicari di Catatan atas Laporan Keuangan.' : ''; };
+
+  function narasi(y) {
+    const rB = sumB('realisasi', y), aB = sumB('anggaran', y), pB = sumB('realisasi', y - 1), beb = sumL(y), pBeb = sumL(y - 1);
+    const op = sumB('realisasi', y, 'Belanja Operasi'), mod = sumB('realisasi', y, 'Belanja Modal'), pMod = sumB('realisasi', y - 1, 'Belanja Modal');
+    const low = B.filter((r) => r.anggaran[y] >= 1e9 && r.kelompok !== 'Belanja Tidak Terduga').sort((a, b) => a.realisasi[y] / a.anggaran[y] - b.realisasi[y] / b.anggaran[y])[0];
+    const big = GL.slice().sort((a, b) => sumL(y, b) - sumL(y, a))[0];
+    const bk = bkNote(y);
+    const umum = '<p>Bagian ini menjawab: ke mana uang Pemerintah Kabupaten Gunungkidul dibelanjakan pada <b>' + y + '</b>. Datanya dari dua laporan di LKPD. <b>Laporan Realisasi Anggaran (LRA)</b> mencatat belanja yang benar-benar keluar (basis kas), sedangkan <b>Laporan Operasional (LO)</b> mencatat beban yang timbul pada tahun itu (basis akrual), termasuk penyusutan aset yang tidak mengeluarkan uang tunai. Karena itu belanja dan beban tidak selalu sama.</p>' +
+      '<p>Realisasi belanja ' + y + ' sebesar <b>' + rpShort(rB) + '</b> (' + pct(rB / aB) + ' dari anggaran ' + rpShort(aB) + '), ' + dirPct(rB, pB) + ' dibanding ' + (y - 1) + '. Total beban sebesar <b>' + rpShort(beb) + '</b>, ' + dirPct(beb, pBeb) + '.</p>' +
+      '<p class="callout">' + auditNote(y) + '</p>';
+    const temuan = '<ul><li><b>Belanja Operasi mendominasi:</b> ' + pct(op / rB, 1) + ' dari total belanja, dan belanja pegawai saja ' + pct(pegawai(y) / rB, 1) + ' (' + rpShort(pegawai(y)) + ').</li>' +
+      '<li><b>Belanja Modal</b> (aset seperti jalan, gedung, dan peralatan) hanya ' + rpShort(mod) + ' atau ' + pct(mod / rB, 1) + ' dari total belanja, ' + dirPct(mod, pMod) + ' dibanding ' + (y - 1) + '.</li>' +
+      '<li><b>Serapan anggaran ' + pct(rB / aB) + '</b> dengan sisa anggaran ' + rpShort(aB - rB) + '. Di luar Belanja Tidak Terduga, capaian terendah ada pada <b>' + low.uraian + '</b> (' + pct(low.realisasi[y] / low.anggaran[y]) + ' dari anggaran ' + rpShort(low.anggaran[y]) + ').</li>' +
+      '<li><b>Beban terbesar:</b> ' + big + ', ' + pct(sumL(y, big) / beb, 1) + ' dari total beban.</li>' +
+      (bk ? '<li>' + bk + '</li>' : '') + '</ul>';
+    const lanjut = '<p>Dashboard ini menunjukkan <b>apa</b> yang berubah, bukan <b>mengapa</b>. Penyebab perubahan perlu dicari di Catatan atas Laporan Keuangan (CaLK), dokumen perencanaan, atau laporan kinerja daerah.</p>' +
+      '<ul><li>Pantau porsi Belanja Modal terhadap total belanja (' + pct(mod / rB, 1) + ' pada ' + y + ') dari tahun ke tahun.</li><li>Bandingkan capaian antarjenis belanja untuk melihat jenis yang serapannya rendah.</li><li>Untuk analisis lanjutan, hasil ini bisa dibandingkan dengan daerah sejenis, misalnya rasio belanja modal dan belanja pegawai.</li></ul>' +
+      '<p>Referensi jurnal dan regulasi belum dimasukkan di sini, jadi tambahkan dulu sebelum dikutip dalam laporan.</p>';
+    return '<h2 class="sec-title reveal">Narasi dan Analisis ' + y + '</h2><div class="grid g-3">' + narCard(1, 'Gambaran umum', umum) + narCard(2, 'Temuan utama', temuan) + narCard(3, 'Catatan dan analisis lanjutan', lanjut) + '</div>';
+  }
+
+  function narasiAll() {
+    const f = YRS[0], l = LAST;
+    const caps = YRS.map((t) => sumB('realisasi', t) / sumB('anggaran', t));
+    const aT = YRS.reduce((s, t) => s + sumB('anggaran', t), 0), rT = YRS.reduce((s, t) => s + sumB('realisasi', t), 0), bT = YRS.reduce((s, t) => s + sumL(t), 0);
+    const shr = (t, g) => sumB('realisasi', t, g) / sumB('realisasi', t);
+    const modF = sumB('realisasi', f, 'Belanja Modal'), modL = sumB('realisasi', l, 'Belanja Modal');
+    const bk = bkNote(l);
+    const umum = '<p>Halaman ini merangkum seluruh data <b>' + f + '–' + l + '</b> dalam satu tampilan, supaya tren antartahun bisa dibaca sekaligus.</p>' +
+      '<p>Selama ' + YRS.length + ' tahun, realisasi belanja berjumlah <b>' + rpShort(rT) + '</b> dari anggaran <b>' + rpShort(aT) + '</b> (rata-rata serapan ' + pct(rT / aT) + '). Total beban pada Laporan Operasional berjumlah <b>' + rpShort(bT) + '</b>.</p>' +
+      '<p class="callout">' + auditNote(l) + '</p>';
+    const temuan = '<ul><li><b>Realisasi belanja:</b> ' + byYear((t) => sumB('realisasi', t)) + '.</li>' +
+      '<li><b>Capaian anggaran:</b> ' + caps.map((c, i) => pct(c) + ' (' + YRS[i] + ')').join(', ') + ' (' + trendWord(caps) + ').</li>' +
+      '<li><b>Porsi Belanja Operasi</b> ' + (shr(l, 'Belanja Operasi') >= shr(f, 'Belanja Operasi') ? 'naik' : 'turun') + ' dari ' + pct(shr(f, 'Belanja Operasi'), 1) + ' (' + f + ') menjadi ' + pct(shr(l, 'Belanja Operasi'), 1) + ' (' + l + '). Belanja pegawai ' + rpShort(pegawai(f)) + ' menjadi ' + rpShort(pegawai(l)) + ' (' + dirPct(pegawai(l), pegawai(f)) + ').</li>' +
+      '<li><b>Belanja Modal:</b> ' + byYear((t) => sumB('realisasi', t, 'Belanja Modal')) + ', ' + dirPct(modL, modF) + ' selama periode. Porsinya ' + pct(shr(f, 'Belanja Modal'), 1) + ' menjadi ' + pct(shr(l, 'Belanja Modal'), 1) + '.</li>' +
+      '<li><b>Total beban (LO):</b> ' + byYear((t) => sumL(t)) + '.</li></ul>';
+    const lanjut = '<p>Angka ' + PREV + ' hanya dipakai sebagai pembanding untuk menghitung perubahan ' + f + '. Belanja (LRA) dan beban (LO) memakai dasar pencatatan berbeda, jadi keduanya tidak untuk dijumlahkan.</p>' +
+      (bk ? '<p class="callout">' + bk + '</p>' : '') +
+      '<p>Dashboard ini menunjukkan <b>apa</b> yang berubah, bukan <b>mengapa</b>. Penyebabnya perlu dicari di CaLK, dokumen perencanaan, atau laporan kinerja. Referensi jurnal dan regulasi belum dimasukkan di sini, jadi tambahkan dulu sebelum dikutip dalam laporan.</p>';
+    return '<h2 class="sec-title reveal">Narasi dan Analisis ' + f + '–' + l + '</h2><div class="grid g-3">' + narCard(1, 'Gambaran umum', umum) + narCard(2, 'Temuan utama', temuan) + narCard(3, 'Catatan dan analisis lanjutan', lanjut) + '</div>';
+  }
+
+  /* ---------- tabel semua tahun ---------- */
+  const dot = (c) => '<i style="display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:9px;background:' + c + '"></i>';
+  function tblBelanjaAll() {
+    const out = [], cells = (a, rl) => '<td>' + money(a) + '</td><td>' + money(rl) + '</td><td>' + (a ? pbar(rl / a) : '—') + '</td>';
+    GB.forEach((g) => {
+      out.push('<tr class="grp"><td colspan="' + (2 + YRS.length * 3) + '">' + dot(css(CB[g])) + g + '</td></tr>');
+      B.filter((r) => r.kelompok === g).forEach((r) => out.push('<tr><td class="item">' + r.uraian + '<span class="kode">' + r.kode + '</span></td>' + YRS.map((t) => cells(r.anggaran[t], r.realisasi[t])).join('') + '<td>' + spark(ALLY.map((t) => r.realisasi[t]), css(CB[g])) + '</td></tr>'));
+      out.push('<tr class="sub"><td>Jumlah ' + g + '</td>' + YRS.map((t) => cells(sumB('anggaran', t, g), sumB('realisasi', t, g))).join('') + '<td>' + spark(ALLY.map((t) => sumB('realisasi', t, g)), css(CB[g])) + '</td></tr>');
+    });
+    out.push('<tr class="tot"><td>JUMLAH BELANJA</td>' + YRS.map((t) => cells(sumB('anggaran', t), sumB('realisasi', t))).join('') + '<td>' + spark(ALLY.map((t) => sumB('realisasi', t)), css('--accent')) + '</td></tr>');
+    return '<table class="tbl wide"><thead><tr><th rowspan="2">Uraian</th>' + YRS.map((t) => '<th colspan="3" class="yh">' + t + '</th>').join('') + '<th rowspan="2">Tren ' + PREV + '–' + LAST + '</th></tr><tr>' + YRS.map(() => '<th>Anggaran</th><th>Realisasi</th><th>Capaian</th>').join('') + '</tr></thead><tbody>' + out.join('') + '</tbody></table>';
+  }
+  function tblBebanAll() {
+    const out = [], f = YRS[0];
+    const row = (cls, label, get, color, kode) => '<tr class="' + cls + '"><td class="' + (cls ? '' : 'item') + '">' + label + (kode ? '<span class="kode">' + kode + '</span>' : '') + '</td>' + ALLY.map((t) => '<td>' + money(get(t)) + '</td>').join('') + '<td>' + chgBadge(get(LAST), get(f)) + '</td><td>' + spark(ALLY.map(get), color) + '</td></tr>';
+    GL.forEach((g) => {
+      out.push('<tr class="grp"><td colspan="' + (3 + ALLY.length) + '">' + dot(css(CL[g])) + g + '</td></tr>');
+      L.filter((r) => r.kelompok === g).forEach((r) => out.push(row('', r.uraian, (t) => r.nilai[t], css(CL[g]), r.kode)));
+      out.push(row('sub', 'Jumlah ' + g, (t) => sumL(t, g), css(CL[g])));
+    });
+    out.push(row('tot', 'JUMLAH BEBAN', (t) => sumL(t), css('--accent')));
+    return '<table class="tbl wide narrow"><thead><tr><th>Uraian</th>' + ALLY.map((t) => '<th>' + t + '</th>').join('') + '<th>' + f + '→' + LAST + '</th><th>Tren ' + PREV + '–' + LAST + '</th></tr></thead><tbody>' + out.join('') + '</tbody></table>';
+  }
+
+  function vSemua() {
+    const f = YRS[0], l = LAST;
+    const aT = YRS.reduce((s, t) => s + sumB('anggaran', t), 0), rT = YRS.reduce((s, t) => s + sumB('realisasi', t), 0), bT = YRS.reduce((s, t) => s + sumL(t), 0);
+    const modF = sumB('realisasi', f, 'Belanja Modal'), modL = sumB('realisasi', l, 'Belanja Modal');
+    reg('chTrend', chTrend); reg('chVs', chVs);
+    reg('chStackB', (cv) => chStack(cv, GB, CB, (t, g) => sumB('realisasi', t, g)));
+    reg('chStackL', (cv) => chStack(cv, GL, CL, (t, g) => sumL(t, g)));
+    const st = (cls, lab, val, sub, w, i) => '<section class="card reveal" style="--i:' + i + '"><div class="stat ' + cls + '"><small>' + lab + '</small><b>' + val + '</b><em>' + sub + '</em><div class="bar"><i style="--w:' + Math.min(100, w).toFixed(1) + '%"></i></div></div></section>';
+    const cardC = (i, h, sub, id, label, cls) => '<section class="card reveal" style="--i:' + i + '"><div class="card-head"><div><h2>' + h + '</h2><p class="sub">' + sub + '</p></div></div>' + box(id, cls || '', label) + '</section>';
+    return '<section class="hero reveal"><div class="eyebrow">Semua tahun · LKPD ' + f + '–' + l + '</div><h1>Data Lengkap ' + f + '–' + l + '</h1><p class="insight">Seluruh data belanja (LRA) dan beban (LO) untuk ' + YRS.length + ' tahun dalam satu halaman: grafik perbandingan, rincian per jenis, dan narasi. Pilih salah satu tahun di bagian atas untuk melihat satu tahun saja.</p></section>' +
+      '<div class="grid g-4">' +
+      st('s1', 'Realisasi belanja ' + f + '–' + l, rpShort(rT), 'dari anggaran ' + rpShort(aT), (rT / aT) * 100, 1) +
+      st('s2', 'Rata-rata capaian', pct(rT / aT), 'realisasi ÷ anggaran, ' + YRS.length + ' tahun', (rT / aT) * 100, 2) +
+      st('s3', 'Belanja Modal ' + l, rpShort(modL), dirPct(modL, modF) + ' dari ' + f, (modL / modF) * 100, 3) +
+      st('s4', 'Total beban ' + f + '–' + l, rpShort(bT), 'Laporan Operasional', 100, 4) +
+      '</div><div class="grid g-11">' +
+      cardC(1, 'Anggaran vs Realisasi Belanja', 'Per tahun anggaran, Rp miliar', 'chTrend', 'Grafik batang anggaran dan realisasi belanja per tahun') +
+      cardC(2, 'Belanja (LRA) vs Beban (LO)', 'Realisasi belanja dan total beban per tahun, Rp miliar', 'chVs', 'Grafik batang realisasi belanja dan total beban per tahun') +
+      '</div><div class="grid g-11">' +
+      cardC(1, 'Realisasi Belanja per Kelompok', 'Per tahun, ditumpuk menurut kelompok, Rp miliar', 'chStackB', 'Grafik batang bertumpuk realisasi belanja per kelompok') +
+      cardC(2, 'Beban per Kelompok', 'Per tahun, ditumpuk menurut kelompok, Rp miliar', 'chStackL', 'Grafik batang bertumpuk beban per kelompok') +
+      '</div>' +
+      tableCard('tblBA', tblBelanjaAll, 'Rincian Belanja ' + f + '–' + l, 'Anggaran, realisasi, dan capaian per jenis belanja, semua tahun.', 1, true) +
+      tableCard('tblLA', tblBebanAll, 'Rincian Beban ' + PREV + '–' + l, 'Beban per jenis menurut LO, semua tahun (' + PREV + ' sebagai pembanding).', 2, true) +
+      narasiAll();
   }
 
   function vUnduh() {
@@ -461,18 +568,19 @@
     const t = TITLES[state.view];
     document.getElementById('crumb').innerHTML = t[0] + '<small>' + t[1] + '</small>';
     document.title = t[0] + ' — Belanja dan Beban Daerah Kabupaten Gunungkidul';
-    const showYear = state.view === 'ringkasan' || state.view === 'belanja' || state.view === 'beban';
+    const showYear = state.view === 'ringkasan' || state.view === 'belanja' || state.view === 'beban' || state.view === 'semua';
+    const isAll = state.view === 'semua';
     const ye = document.getElementById('years');
     ye.classList.toggle('hidden', !showYear);
-    ye.innerHTML = YRS.map((y) => '<button role="tab" data-y="' + y + '" aria-selected="' + (y === state.year) + '">' + y + '</button>').join('');
+    ye.innerHTML = YRS.map((y) => '<button role="tab" data-y="' + y + '" aria-selected="' + (!isAll && y === state.year) + '">' + y + '</button>').join('') + '<button role="tab" data-y="all" aria-selected="' + isAll + '">Semua</button>';
     const dl = document.getElementById('dlTop');
-    dl.href = fileOf(state.year); dl.classList.toggle('hidden', !showYear);
+    dl.href = fileOf(state.year); dl.classList.toggle('hidden', !showYear || isAll);
     document.getElementById('dlTopLbl').textContent = 'Unduh Excel ' + state.year;
   }
   function render(scroll) {
     destroy();
     themeChart();
-    const fn = { ringkasan: vRingkasan, belanja: vBelanja, beban: vBeban, unduh: vUnduh, tentang: vTentang }[state.view];
+    const fn = { ringkasan: vRingkasan, belanja: vBelanja, beban: vBeban, semua: vSemua, unduh: vUnduh, tentang: vTentang }[state.view];
     const view = document.getElementById('view');
     view.innerHTML = fn();
     view.classList.remove('swap'); void view.offsetWidth; view.classList.add('swap');
@@ -480,7 +588,9 @@
     observe(view);
     if (scroll) window.scrollTo({ top: 0, behavior: 'auto' });
   }
-  function setYear(y) { if (y === state.year) return; state.year = y; store.set('gk.year', y); render(false); }
+  function setYear(y) {
+    if (state.view === 'semua') { state.year = y; store.set('gk.year', y); location.hash = 'ringkasan'; return; }
+    if (y === state.year) return; state.year = y; store.set('gk.year', y); render(false); }
   function route() {
     const h = (location.hash || '#ringkasan').slice(1);
     state.view = VIEWS.indexOf(h) >= 0 ? h : 'ringkasan';
@@ -492,7 +602,7 @@
     document.querySelector('meta[name="theme-color"]').setAttribute('content', state.theme === 'dark' ? '#0b111b' : '#2f3d5c');
   }
 
-  document.getElementById('years').addEventListener('click', (e) => { const b = e.target.closest('button[data-y]'); if (b) setYear(+b.dataset.y); });
+  document.getElementById('years').addEventListener('click', (e) => { const b = e.target.closest('button[data-y]'); if (!b) return; if (b.dataset.y === 'all') location.hash = 'semua'; else setYear(+b.dataset.y); });
   document.getElementById('view').addEventListener('click', (e) => {
     const b = e.target.closest('button[data-unit]');
     if (b) { state.unit = b.dataset.unit; store.set('gk.unit', state.unit); refreshTables(); }

@@ -233,3 +233,11 @@ table.tbl{width:100%;border-collapse:collapse;font-size:12.8px;min-width:600px}
 
 .about-logo{height:96px;width:auto;float:right;margin:0 0 8px 16px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.18))}
 @media(max-width:560px){.about-logo{height:64px}}
+
+.sec-title{font-size:18px;font-weight:700;margin:30px 0 14px}
+.tbl.wide{min-width:1180px}
+.tbl.wide.narrow{min-width:820px}
+.tbl.wide .yh{text-align:center;border-left:1px solid var(--line);color:var(--text)}
+.tbl.wide:not(.narrow) td:nth-child(3n+2){border-left:1px solid var(--grid)}
+.prose ul li b{color:var(--text)}
+@media(max-width:560px){.years button{padding:6px 9px;font-size:12px}.crumb{display:none}}

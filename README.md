@@ -60,3 +60,9 @@ Angka disimpan di `js/data.js`, dan dihasilkan dari `tools/data.py` (format angk
 - Seluruh subtotal dan total di dokumen sumber sudah dicocokkan dengan jumlah rinciannya.
 - Pada dokumen sumber, LO 2023 dan LO 2024 berlabel "Audited", sedangkan kolom 2025 tidak berlabel "Audited".
 - Beban Bantuan Keuangan pada LO 2025 jauh lebih kecil daripada Belanja Bantuan Keuangan pada LRA 2025. Angka mengikuti dokumen sumber.
+
+
+## Pembaruan: narasi dan tombol "Semua"
+
+- **Narasi dan Analisis** muncul di bawah halaman Ringkasan untuk tiap tahun. Teksnya dihitung otomatis dari `js/data.js` (fungsi `narasi()` di `js/app.js`), jadi ikut berubah kalau data diubah.
+- **Tombol "Semua"** (di samping pilihan tahun) membuka halaman *Semua Tahun*: grafik 2023-2025, tabel lengkap belanja dan beban semua tahun, serta narasi tiga tahun (fungsi `vSemua()` dan `narasiAll()`).
