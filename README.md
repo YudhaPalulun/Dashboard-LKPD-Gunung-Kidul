@@ -66,3 +66,9 @@ Angka disimpan di `js/data.js`, dan dihasilkan dari `tools/data.py` (format angk
 
 - **Narasi dan Analisis** muncul di bawah halaman Ringkasan untuk tiap tahun. Teksnya dihitung otomatis dari `js/data.js` (fungsi `narasi()` di `js/app.js`), jadi ikut berubah kalau data diubah.
 - **Tombol "Semua"** (di samping pilihan tahun) membuka halaman *Semua Tahun*: grafik 2023-2025, tabel lengkap belanja dan beban semua tahun, serta narasi tiga tahun (fungsi `vSemua()` dan `narasiAll()`).
+
+## Pembaruan: rumus Excel
+
+Setiap file Excel kini punya sheet **Rumus & Perhitungan** (16 indikator dengan rumus yang terlihat, plus 4 pemeriksaan otomatis), dan kolom baru di Rincian LRA (Sisa Anggaran, Porsi thd Total) dan Rincian LO (Porsi thd Total). Hanya angka biru di sheet Rincian yang berupa input dari dokumen sumber; semuanya selain itu rumus. Untuk membangun ulang: `python3 tools/build_xlsx.py`, lalu hitung ulang di Excel/LibreOffice.
+
+Semua persentase dan hasil hitung di Excel memakai rumus. Rumusnya terlihat langsung: kolom **Rumus** di sheet Data Grafik (F-H), baris 3 di sheet Rincian LRA/LO (rumus tiap kolom), dan sheet Rumus & Perhitungan.
