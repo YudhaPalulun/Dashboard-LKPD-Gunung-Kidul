@@ -567,10 +567,10 @@
     document.querySelectorAll('.xl td.sel,.xl td.pre').forEach((e) => e.classList.remove('sel', 'pre'));
     const td = document.querySelector('.xl td[data-a="' + addr + '"]'); if (td) td.classList.add('sel');
     const st = x ? (x[3] || '').split(' ') : [];
-    let fv = '', note = '';
+    let fv = '', note = '', val = '';
     if (x && x[1]) {
-      fv = '<code>' + esc(x[1]) + '</code><span class="arr">→</span><b>' + esc(xlFmt(x[0], x[2])) + '</b>';
-      note = xlExplain(x[1]);
+      fv = '<code>' + esc(x[1]) + '</code>';
+      note = xlExplain(x[1]); val = xlFmt(x[0], x[2]);
       xlRefs(x[1]).forEach((q) => { for (let rr = q[1]; rr <= q[3]; rr++) for (let cc = q[0]; cc <= q[2]; cc++) { const t = document.querySelector('.xl td[data-a="' + colL(cc) + rr + '"]'); if (t && t !== td) t.classList.add('pre'); } });
     } else if (x && typeof x[0] === 'number') {
       fv = '<b>' + esc(xlFmt(x[0], x[2])) + '</b>'; note = st.includes('in') ? 'Angka input: disalin dari dokumen LKPD (teks biru). Bukan hasil rumus.' : '';
@@ -578,7 +578,7 @@
     const lb = xlLabels(sh, r, c), lab = [lb[0], lb[1]].filter(Boolean).join(' · ');
     document.getElementById('xlName').textContent = addr;
     document.getElementById('xlFv').innerHTML = fv || '<span class="mut">(sel kosong)</span>';
-    document.getElementById('xlDesc').innerHTML = (lab ? '<b>' + esc(lab) + '</b>' : '') + (lab && note ? ' — ' : '') + esc(note);
+    document.getElementById('xlDesc').innerHTML = (val ? '<div class="hasil">Hasil: <b>' + esc(val) + '</b></div>' : '') + (lab ? '<b>' + esc(lab) + '</b>' : '') + (lab && note ? ' — ' : '') + esc(note);
   }
   function xlInit() {
     const sh = xlSheet(); let first = null;

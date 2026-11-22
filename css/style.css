@@ -248,7 +248,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:12.8px;min-width:600px}
 .fbar{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--ink-soft);font-size:12.5px}
 .fbar .nb{min-width:62px;padding:9px 10px;font-weight:700;text-align:center;border-right:1px solid var(--line);font-family:Consolas,Menlo,monospace}
 .fbar .fxl{padding:9px 10px;color:var(--muted);font-style:italic;border-right:1px solid var(--line);font-family:Georgia,serif}
-.fbar .fv{flex:1;min-width:0;padding:9px 12px;font-family:Consolas,Menlo,monospace;line-height:1.5;word-break:break-all}
+.fbar .fv{flex:1;min-width:0;padding:9px 12px;font-family:Consolas,Menlo,monospace;line-height:1.5;white-space:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}.fdesc .hasil{margin-bottom:2px}.fdesc .hasil b{color:var(--accent)}
 .fbar .fv .arr{margin:0 8px;color:var(--muted)}
 .fbar .fv b{color:var(--accent)}
 .fbar .mut{color:var(--muted)}
