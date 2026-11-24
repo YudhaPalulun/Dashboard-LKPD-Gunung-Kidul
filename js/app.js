@@ -432,7 +432,7 @@
     const low = B.filter((r) => r.anggaran[y] >= 1e9 && r.kelompok !== 'Belanja Tidak Terduga').sort((a, b) => a.realisasi[y] / a.anggaran[y] - b.realisasi[y] / b.anggaran[y])[0];
     const big = GL.slice().sort((a, b) => sumL(y, b) - sumL(y, a))[0];
     const bk = bkNote(y);
-    const umum = '<p>Bagian ini menjawab: ke mana uang Pemerintah Kabupaten Gunungkidul dibelanjakan pada <b>' + y + '</b>. Datanya dari dua laporan di LKPD. <b>Laporan Realisasi Anggaran (LRA)</b> mencatat belanja yang benar-benar keluar (basis kas), sedangkan <b>Laporan Operasional (LO)</b> mencatat beban yang timbul pada tahun itu (basis akrual), termasuk penyusutan aset yang tidak mengeluarkan uang tunai. Karena itu belanja dan beban tidak selalu sama.</p>' +
+    const umum = '<p>Bagian ini memberikan gambaran mengenai alokasi dan realisasi belanja Pemerintah Kabupaten Gunungkidul selama tahun <b>' + y + '</b>. Datanya dari dua laporan di LKPD. <b>Laporan Realisasi Anggaran (LRA)</b> mencatat belanja yang benar-benar keluar (basis kas), sedangkan <b>Laporan Operasional (LO)</b> mencatat beban yang timbul pada tahun itu (basis akrual), termasuk penyusutan aset yang tidak mengeluarkan uang tunai. Karena itu belanja dan beban tidak selalu sama.</p>' +
       '<p>Realisasi belanja ' + y + ' sebesar <b>' + rpShort(rB) + '</b> (' + pct(rB / aB) + ' dari anggaran ' + rpShort(aB) + '), ' + dirPct(rB, pB) + ' dibanding ' + (y - 1) + '. Total beban sebesar <b>' + rpShort(beb) + '</b>, ' + dirPct(beb, pBeb) + '.</p>' +
       '<p class="callout">' + auditNote(y) + '</p>';
     const temuan = '<ul><li><b>Belanja Operasi mendominasi:</b> ' + pct(op / rB, 1) + ' dari total belanja, dan belanja pegawai saja ' + pct(pegawai(y) / rB, 1) + ' (' + rpShort(pegawai(y)) + ').</li>' +
